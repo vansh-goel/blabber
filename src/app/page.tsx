@@ -143,9 +143,9 @@ function AudioFeed() {
       {events?.map((event, index) => (
         <div
           key={index}
-          className="p-4 flex flex-col gap-2 rounded-xl border-2 shadow-md shadow-black"
+          className="p-4 flex flex-col gap-2 rounded-xl border-1 shadow-sm shadow-black/80 before:opacity-60"
         >
-          <p className="block md:hidden text-black font-medium">
+          <p className="block md:hidden text-black font-medium opacity-100">
             User:{" "}
             {`${event.data.user.slice(0, 3)}...${event.data.user.slice(-4)}`}
           </p>
@@ -162,8 +162,10 @@ function AudioFeed() {
               src={`https://ipfs.io/ipfs/${event.data.audioHash.replace(/^ipfs:\/\//, "")}`}
             ></audio>
           </div>
-          <p>Duration: {event.data.duration.toString()}s</p>
-          <p>
+          <p className="opacity-100">
+            Duration: {event.data.duration.toString()}s
+          </p>
+          <p className="opacity-100">
             Posted at:{" "}
             {new Date(event.data.timestamp.toNumber() * 1000).toLocaleString()}
           </p>
