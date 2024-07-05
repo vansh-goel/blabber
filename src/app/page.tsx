@@ -97,12 +97,22 @@ function AudioRecorder() {
   };
 
   return (
-    <div>
-      <button onClick={isRecording ? stopRecording : startRecording}>
+    <div className="flex-col flex md:flex-row gap-2 md:justify-between md:w-full items-center">
+      <button
+        className="bg-black rounded-md p-4 py-2 text-white"
+        onClick={isRecording ? stopRecording : startRecording}
+      >
         {isRecording ? "Stop Recording" : "Start Recording"}
       </button>
       <p>Recording Time: {recordingTime}s</p>
-      {audioBlob && <button onClick={postAudio}>Post Audio</button>}
+      {audioBlob && (
+        <button
+          className="bg-violet-400 rounded-md px-4 py-2"
+          onClick={postAudio}
+        >
+          Post Audio
+        </button>
+      )}
     </div>
   );
 }
