@@ -1,16 +1,17 @@
 "use client";
-import "../app/globals.css";
-import React, { useState, useEffect, useRef } from "react";
 import {
   ThirdwebProvider,
   useContract,
   useAddress,
   ConnectWallet,
   useStorageUpload,
+  useContractEvents,
 } from "@thirdweb-dev/react";
 import { PolygonAmoyTestnet } from "@thirdweb-dev/chains";
-import { useContractEvents } from "@thirdweb-dev/react";
+import React, { useState, useEffect, useRef } from "react";
+import "../app/globals.css";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
+
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
 const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID as string;
 
@@ -119,7 +120,11 @@ function AudioFeed() {
   }
 
   if (error) {
-    return <div>Error loading audio feed: {error.message}</div>;
+    // Type guard for error object
+    if (error instanceof Error) {
+      return <div>Error loading audio feed: {error.message}</div>;
+    }
+    return <div>Error loading audio feed</div>;
   }
 
   return (
@@ -151,6 +156,7 @@ function AudioFeed() {
     </div>
   );
 }
+
 function MainContent() {
   return (
     <div className="grid p-12 text-black gap-2 bg-white rounded-xl w-full shadow-xl border-2 z-10 my-4 h-md overflow-x-hidden">
