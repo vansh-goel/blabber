@@ -138,12 +138,12 @@ function AudioFeed() {
   }
 
   return (
-    <div className="divider-x divide-gray-400 p-2 md:p-4 overflow-x-hidden overflow-y-scroll flex-col flex gap-2">
+    <div className="divider-x divide-gray-400 p-2 md:p-4 overflow-x-hidden overflow-y-scroll flex-col flex gap-3">
       <h2 className="text-2xl mt-4">Audio Feed</h2>
       {events?.map((event, index) => (
         <div
           key={index}
-          className="p-0 md:p-2 flex flex-col gap-2 rounded-xl border-2 shadow-sm shadow-black"
+          className="p-4 flex flex-col gap-2 rounded-xl border-2 shadow-md shadow-black"
         >
           <p className="block md:hidden text-black font-medium">
             User:{" "}
