@@ -1,113 +1,180 @@
-import Image from "next/image";
+"use client";
+import "../app/globals.css";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  ThirdwebProvider,
+  useContract,
+  useAddress,
+  ConnectWallet,
+  useStorageUpload,
+} from "@thirdweb-dev/react";
+import { PolygonAmoyTestnet } from "@thirdweb-dev/chains";
+import { useContractEvents } from "@thirdweb-dev/react";
+import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
+const CLIENT_ID = process.env.NEXT_PUBLIC_CLIENT_ID as string;
+
+function AudioRecorder() {
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const { contract } = useContract(CONTRACT_ADDRESS);
+  const address = useAddress();
+  const { mutateAsync: upload } = useStorageUpload();
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime((prevTime) => {
+          if (prevTime >= 60) {
+            stopRecording();
+            return 60;
+          }
+          return prevTime + 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      mediaRecorderRef.current.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorderRef.current.onstop = () =>
+        setAudioBlob(new Blob(chunks, { type: "audio/webm" }));
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const uploadToIPFS = async (blob: Blob) => {
+    try {
+      const file = new File([blob], "audio.webm", { type: "audio/webm" });
+      const uris = await upload({ data: [file] });
+      return uris[0];
+    } catch (error) {
+      console.error("Error uploading to IPFS:", error);
+      return null;
+    }
+  };
+
+  const postAudio = async () => {
+    if (!audioBlob || !contract || !address) return;
+
+    try {
+      const ipfsUri = await uploadToIPFS(audioBlob);
+      if (!ipfsUri) throw new Error("Failed to upload to IPFS");
+
+      // Use the contract.call method for write operations
+      const tx = await contract.call("setAudio", [ipfsUri, recordingTime]);
+
+      console.log("Audio posted successfully!", tx);
+
+      // Optionally, you can get the transaction receipt if needed
+      // const receipt = await tx.receipt;
+      // console.log("Transaction receipt:", receipt);
+    } catch (error) {
+      console.error("Error posting audio:", error);
+    }
+  };
+
+  return (
+    <div>
+      <button onClick={isRecording ? stopRecording : startRecording}>
+        {isRecording ? "Stop Recording" : "Start Recording"}
+      </button>
+      <p>Recording Time: {recordingTime}s</p>
+      {audioBlob && <button onClick={postAudio}>Post Audio</button>}
+    </div>
+  );
+}
+
+function AudioFeed() {
+  const { contract } = useContract(CONTRACT_ADDRESS);
+  const {
+    data: events,
+    isLoading,
+    error,
+  } = useContractEvents(contract, "AudioUploaded");
+
+  if (isLoading) {
+    return <div>Loading audio feed...</div>;
+  }
+
+  if (error) {
+    return <div>Error loading audio feed: {error.message}</div>;
+  }
+
+  return (
+    <div className="divider-x divide-gray-400 p-4 overflow-x-hidden overflow-y-scroll flex-col flex gap-2">
+      <h2 className="text-2xl mt-4">Audio Feed</h2>
+      {events?.map((event, index) => (
+        <div
+          key={index}
+          className="p-2 flex flex-col gap-2 rounded-xl border-2 shadow-sm shadow-black"
+        >
+          <p className="text-black font-medium">User: {event.data.user}</p>
+          <div
+            id="media-renderer"
+            className="mt-2 text-right flex flex-col items-start justify-start w-full"
+          >
+            <audio
+              className="w-full"
+              controls
+              src={`https://ipfs.io/ipfs/${event.data.audioHash.replace(/^ipfs:\/\//, "")}`}
+            ></audio>
+          </div>
+          <p>Duration: {event.data.duration.toString()}s</p>
+          <p>
+            Posted at:{" "}
+            {new Date(event.data.timestamp.toNumber() * 1000).toLocaleString()}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+function MainContent() {
+  return (
+    <div className="grid p-12 text-black gap-2 bg-white rounded-xl w-full shadow-xl border-2 z-10 my-4 h-md overflow-x-hidden">
+      <div className="flex w-full justify-between gap-4 items-center">
+        <h1 className="text-black text-4xl font-medium">
+          Social Audio Platform
+        </h1>
+        <ConnectWallet />
+      </div>
+      <div>
+        <AudioRecorder />
+      </div>
+      <hr className="text-xl" />
+      <AudioFeed />
+    </div>
+  );
+}
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+    <ThirdwebProvider clientId={CLIENT_ID} activeChain={PolygonAmoyTestnet}>
+      <BackgroundGradientAnimation className="grid place-content-center p-12 h-full overflow-hidden">
+        <MainContent />
+      </BackgroundGradientAnimation>
+    </ThirdwebProvider>
   );
 }
