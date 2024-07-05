@@ -128,14 +128,20 @@ function AudioFeed() {
   }
 
   return (
-    <div className="divider-x divide-gray-400 p-4 overflow-x-hidden overflow-y-scroll flex-col flex gap-2">
+    <div className="divider-x divide-gray-400 p-2 md:p-4 overflow-x-hidden overflow-y-scroll flex-col flex gap-2">
       <h2 className="text-2xl mt-4">Audio Feed</h2>
       {events?.map((event, index) => (
         <div
           key={index}
-          className="p-2 flex flex-col gap-2 rounded-xl border-2 shadow-sm shadow-black"
+          className="p-0 md:p-2 flex flex-col gap-2 rounded-xl border-2 shadow-sm shadow-black"
         >
-          <p className="text-black font-medium">User: {event.data.user}</p>
+          <p className="block md:hidden text-black font-medium">
+            User:{" "}
+            {`${event.data.user.slice(0, 3)}...${event.data.user.slice(-4)}`}
+          </p>
+          <p className="hidden md:block text-black font-medium">
+            User: {event.data.user}
+          </p>
           <div
             id="media-renderer"
             className="mt-2 text-right flex flex-col items-start justify-start w-full"
@@ -159,9 +165,9 @@ function AudioFeed() {
 
 function MainContent() {
   return (
-    <div className="grid p-12 text-black gap-2 bg-white rounded-xl w-full shadow-xl border-2 z-10 my-4 h-md overflow-x-hidden">
+    <div className="grid p-6 md:p-12 text-black gap-2 bg-white rounded-xl w-full shadow-xl border-2 z-10 my-2 md:my-4 h-md overflow-x-hidden">
       <div className="flex w-full justify-between gap-4 items-center">
-        <h1 className="text-black text-4xl font-medium">
+        <h1 className="text-black text-xl md:text-4xl font-medium">
           Social Audio Platform
         </h1>
         <ConnectWallet />
@@ -178,7 +184,7 @@ function MainContent() {
 export default function Home() {
   return (
     <ThirdwebProvider clientId={CLIENT_ID} activeChain={PolygonAmoyTestnet}>
-      <BackgroundGradientAnimation className="grid place-content-center p-12 h-full overflow-hidden">
+      <BackgroundGradientAnimation className="grid place-content-center p-6 md:p-12 h-full overflow-hidden">
         <MainContent />
       </BackgroundGradientAnimation>
     </ThirdwebProvider>
